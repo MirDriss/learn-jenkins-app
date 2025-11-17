@@ -25,10 +25,6 @@ pipeline {
 
         stage ('Test'){
 
-            agent{
-                reuseNode true
-            }
-
             steps{
                 
                 sh '''
