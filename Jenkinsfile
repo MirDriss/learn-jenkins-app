@@ -3,7 +3,6 @@ pipeline {
     
     stages {
         // This is a comment 
-        /*
         stage('Build'){
 
             agent {
@@ -23,7 +22,7 @@ pipeline {
                 '''
             }
         }
-        */
+        
 
         stage ('Tests'){
             parallel {
