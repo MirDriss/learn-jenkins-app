@@ -8,6 +8,8 @@ pipeline {
         // Récupère le token Netlify depuis les credentials Jenkins
         NETLIFY_AUTH_TOKEN = credentials('netlify_token')
 
+        REACT_APP_VERSION = '1.2.3'
+
     }
     
     stages {
@@ -158,19 +160,6 @@ pipeline {
                     ])
                 }
             }
-        }
-
-        stage ('Approval'){
-
-            steps {
-
-                timeout(time: 15, unit: 'MINUTES') {
-                    input message: 'Do you wish to deploy to production ? ', ok: 'Yes, I am sur !'
-                }
-
-                
-            }
-
         }
 
         /*****************************
