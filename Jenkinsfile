@@ -122,6 +122,10 @@ pipeline {
                     reuseNode true
                 }
             }
+
+            environment {
+                CI_ENVIRONMENT_URL = 'Coming'
+            }
             steps {
                 sh '''
                      npm install netlify-cli@20.1.1      # Installe CLI Netlify
