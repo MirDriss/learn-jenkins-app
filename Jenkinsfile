@@ -153,6 +153,7 @@ pipeline {
             steps {
                 sh '''
                     npm install netlify-cli@20.1.1      # Installe CLI Netlify
+                    npp install node-jq
                     node_modules/.bin/netlify --version # Vérifie version
                     
                     echo "Deploying to production. SITE_ID = $NETLIFY_SITE_ID"
@@ -160,7 +161,8 @@ pipeline {
                     node_modules/.bin/netlify status     # Vérifie connexion au compte Netlify
                     
                     # Déploie le dossier build dans Netlify en mode production
-                    node_modules/.bin/netlify deploy --dir=build --prod
+                    node_modules/.bin/netlify deploy --dir=build --json > deploy-output.json
+                    node_modules/.bin/node-jq -r '.deploy_url' deploy-output.json
                 '''
             }
         }
