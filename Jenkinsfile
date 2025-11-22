@@ -114,40 +114,7 @@ pipeline {
             }
         }
 
-         stage('Deploy staging') {
-
-            agent {
-                docker {
-                    image 'node:18-alpine'
-                    reuseNode true
-                }
-            }
-
-            steps {
-                sh '''
-                    npm install netlify-cli@20.1.1      # Installe CLI Netlify
-                    npm install node-jq
-
-                    node_modules/.bin/netlify --version # Vérifie version
-                    
-                    echo "Deploying to staging. SITE_ID = $NETLIFY_SITE_ID"
-                    
-                    node_modules/.bin/netlify status     # Vérifie connexion au compte Netlify
-                    
-                    # Déploie le dossier build dans Netlify en mode stagging
-                    node_modules/.bin/netlify deploy --dir=build --json > deploy-output.json
-                    node_modules/.bin/node-jq -r '.deploy_url' deploy-output.json
-                    
-                '''
-
-                script {
-                    env.STAGING_URL = sh(script: "node_modules/.bin/node-jq -r '.deploy_url' deploy-output.json", returnStdout: true)
-                }
-            }
-
-        }
-
-        stage ('Stagging E2E') {
+        stage ('Deploying E2E') {
 
             agent {
                 docker {
@@ -155,13 +122,18 @@ pipeline {
                     reuseNode true
                 }
             }
-
-            environment {
-                CI_ENVIRONMENT_URL= "${env.STAGING_URL}"
-            }
-
             steps {
                 sh '''
+                     npm install netlify-cli@20.1.1      # Installe CLI Netlify
+                    npm install node-jq
+
+                    node_modules/.bin/netlify --version # Vérifie version
+                    
+                    node_modules/.bin/netlify status     # Vérifie connexion au compte Netlify
+                    
+                    # Déploie le dossier build dans Netlify en mode stagging
+                    node_modules/.bin/netlify deploy --dir=build --json > deploy-output.json
+                    CI_ENVIRONMENT_URL=$(node_modules/.bin/node-jq -r '.deploy_url' deploy-output.json)
                     npx playwright test --reporter=html # Lance les tests E2E + génère un rapport HTML
                 '''
             }
