@@ -30,7 +30,7 @@ pipeline {
                     node --version            # Vérifie version Node
                     npm --version             # Vérifie version npm
                     
-                    npm ci                    # Installe les dépendances propres
+                    npm ci                    # Installe les dépendances propres --> package-lock.json
                     npm run build             # Compile ton projet → crée le dossier build/
                     
                     ls -la                    # Revérifie les fichiers après build
@@ -67,7 +67,7 @@ pipeline {
 
                     post {
                         always {
-                            junit 'jest-results/junit.xml'  # Publie les résultats Jest dans Jenkins
+                            junit 'jest-results/junit.xml'  //Publie les résultats Jest dans Jenkins
                         }
                     }
                 }
