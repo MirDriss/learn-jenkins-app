@@ -7,6 +7,7 @@ pipeline {
         
         // Récupère le token Netlify depuis les credentials Jenkins
         NETLIFY_AUTH_TOKEN = credentials('netlify_token')
+
     }
     
     stages {
@@ -103,7 +104,7 @@ pipeline {
                                 keepAll: false,
                                 reportDir: 'playwright-report',
                                 reportFiles: 'index.html',
-                                reportName: 'Playwright HTML Report',
+                                reportName: 'Playwright Local',
                                 reportTitles: '',
                                 useWrapperFileDirectly: true
                             ])
@@ -137,6 +138,43 @@ pipeline {
                     # Déploie le dossier build dans Netlify en mode production
                     node_modules/.bin/netlify deploy --dir=build --prod
                 '''
+            }
+        }
+
+        stage ('Prod E2E') {
+
+            agent {
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.39.0-focal'
+                    reuseNode true
+                }
+            }
+
+            environment {
+                CI_ENVIRONMENT_URL= "https://golden-parfait-316a2f.netlify.app"
+            }
+
+            steps {
+                sh '''
+                    npx playwright test --reporter=html # Lance les tests E2E + génère un rapport HTML
+                '''
+            }
+
+            post {
+                always {
+                    // Publie le rapport HTML Playwright dans Jenkins
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: false,
+                        icon: '',
+                        keepAll: false,
+                        reportDir: 'playwright-report',
+                        reportFiles: 'index.html',
+                        reportName: 'Playwright E2E',
+                        reportTitles: '',
+                        useWrapperFileDirectly: true
+                    ])
+                }
             }
         }
     }
