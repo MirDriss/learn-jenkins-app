@@ -165,7 +165,7 @@ pipeline {
             }
         }
 
-        stage {'Approval'}{
+        stage ('Approval'){
 
             steps {
 
