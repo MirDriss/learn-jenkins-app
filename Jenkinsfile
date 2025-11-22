@@ -184,33 +184,6 @@ pipeline {
             }
         }
 
-        /*****************************
-         *         STAGE 3 : DEPLOY
-         *****************************/
-        stage('Deploy prod') {
-
-            agent {
-                docker {
-                    image 'node:18-alpine'
-                    reuseNode true
-                }
-            }
-
-            steps {
-                sh '''
-                    npm install netlify-cli@20.1.1      # Installe CLI Netlify
-                    node_modules/.bin/netlify --version # Vérifie version
-                    
-                    echo "Deploying to production. SITE_ID = $NETLIFY_SITE_ID"
-                    
-                    node_modules/.bin/netlify status     # Vérifie connexion au compte Netlify
-                    
-                    # Déploie le dossier build dans Netlify en mode production
-                    node_modules/.bin/netlify deploy --dir=build 
-                '''
-            }
-        }
-
         stage ('Approval'){
 
             steps {
@@ -224,7 +197,11 @@ pipeline {
 
         }
 
-        stage ('Prod E2E') {
+        /*****************************
+         *         STAGE 3 : DEPLOY
+         *****************************/
+
+        stage ('Deploying Prod') {
 
             agent {
                 docker {
@@ -239,7 +216,17 @@ pipeline {
 
             steps {
                 sh '''
+                    npm install netlify-cli@20.1.1      # Installe CLI Netlify
+                    node_modules/.bin/netlify --version # Vérifie version
+                    
+                    echo "Deploying to production. SITE_ID = $NETLIFY_SITE_ID"
+                    
+                    node_modules/.bin/netlify status     # Vérifie connexion au compte Netlify
+                    
+                    # Déploie le dossier build dans Netlify en mode production
+                    node_modules/.bin/netlify deploy --dir=build --prod
                     npx playwright test --reporter=html # Lance les tests E2E + génère un rapport HTML
+
                 '''
             }
 
