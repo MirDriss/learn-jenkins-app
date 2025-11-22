@@ -126,7 +126,7 @@ pipeline {
             steps {
                 sh '''
                     npm install netlify-cli@20.1.1      # Installe CLI Netlify
-                    npp install node-jq
+                    npm install node-jq
 
                     node_modules/.bin/netlify --version # Vérifie version
                     
