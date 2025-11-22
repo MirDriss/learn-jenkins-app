@@ -126,15 +126,61 @@ pipeline {
             steps {
                 sh '''
                     npm install netlify-cli@20.1.1      # Installe CLI Netlify
+                    npp install node-jq
+
                     node_modules/.bin/netlify --version # Vérifie version
                     
                     echo "Deploying to staging. SITE_ID = $NETLIFY_SITE_ID"
                     
                     node_modules/.bin/netlify status     # Vérifie connexion au compte Netlify
                     
-                    # Déploie le dossier build dans Netlify en mode production
-                    node_modules/.bin/netlify deploy --dir=build 
+                    # Déploie le dossier build dans Netlify en mode stagging
+                    node_modules/.bin/netlify deploy --dir=build --json > deploy-output.json
+                    node_modules/.bin/node-jq -r '.deploy_url' deploy-output.json
+                    
                 '''
+
+                script {
+                    env.STAGING_URL = sh(script: "node_modules/.bin/node-jq -r '.deploy_url' deploy-output.json", returnStdout: true)
+                }
+            }
+
+        }
+
+        stage ('Stagging E2E') {
+
+            agent {
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.39.0-focal'
+                    reuseNode true
+                }
+            }
+
+            environment {
+                CI_ENVIRONMENT_URL= "${env.STAGING_URL}"
+            }
+
+            steps {
+                sh '''
+                    npx playwright test --reporter=html # Lance les tests E2E + génère un rapport HTML
+                '''
+            }
+
+            post {
+                always {
+                    // Publie le rapport HTML Playwright dans Jenkins
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: false,
+                        icon: '',
+                        keepAll: false,
+                        reportDir: 'playwright-report',
+                        reportFiles: 'index.html',
+                        reportName: 'Stagging E2E',
+                        reportTitles: '',
+                        useWrapperFileDirectly: true
+                    ])
+                }
             }
         }
 
@@ -153,7 +199,6 @@ pipeline {
             steps {
                 sh '''
                     npm install netlify-cli@20.1.1      # Installe CLI Netlify
-                    npp install node-jq
                     node_modules/.bin/netlify --version # Vérifie version
                     
                     echo "Deploying to production. SITE_ID = $NETLIFY_SITE_ID"
@@ -161,8 +206,7 @@ pipeline {
                     node_modules/.bin/netlify status     # Vérifie connexion au compte Netlify
                     
                     # Déploie le dossier build dans Netlify en mode production
-                    node_modules/.bin/netlify deploy --dir=build --json > deploy-output.json
-                    node_modules/.bin/node-jq -r '.deploy_url' deploy-output.json
+                    node_modules/.bin/netlify deploy --dir=build 
                 '''
             }
         }
@@ -209,7 +253,7 @@ pipeline {
                         keepAll: false,
                         reportDir: 'playwright-report',
                         reportFiles: 'index.html',
-                        reportName: 'Playwright E2E',
+                        reportName: 'Prod E2E',
                         reportTitles: '',
                         useWrapperFileDirectly: true
                     ])
