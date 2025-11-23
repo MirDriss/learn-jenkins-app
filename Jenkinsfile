@@ -14,6 +14,12 @@ pipeline {
     
     stages {
 
+        stage ('Docker'){
+            steps{
+                sh 'docker build -t my-playwright .'
+            }
+        }
+
         /*****************************
          *         STAGE 1 : BUILD
          *****************************/
@@ -130,7 +136,7 @@ pipeline {
             }
             steps {
                 sh '''
-                     npm install netlify-cli@20.1.1      # Installe CLI Netlify
+                    npm install netlify-cli@20.1.1      # Installe CLI Netlify
                     npm install node-jq
 
                     node_modules/.bin/netlify --version # Vérifie version
