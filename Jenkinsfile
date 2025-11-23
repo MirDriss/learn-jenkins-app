@@ -86,16 +86,14 @@ pipeline {
 
                     agent {
                         docker {
-                            image 'mcr.microsoft.com/playwright:v1.39.0-focal'
+                            image 'my-playwright'
                             reuseNode true
                         }
                     }
 
                     steps {
-                        sh '''
-                            npm install serve                   # Installe un serveur statique
-                            
-                            node_modules/.bin/serve -s build &  # Lance ton site en background
+                        sh '''                         
+                            serve -s build &  # Lance ton site en background
                             sleep 10                             # Attend que le site démarre
                             
                             npx playwright test --reporter=html # Lance les tests E2E + génère un rapport HTML
