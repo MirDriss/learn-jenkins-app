@@ -142,7 +142,7 @@ pipeline {
                     
                     # Déploie le dossier build dans Netlify en mode stagging
                     netlify deploy --dir=build --json > deploy-output.json
-                    CI_ENVIRONMENT_URL=$(node_modules/.bin/node-jq -r '.deploy_url' deploy-output.json)
+                    CI_ENVIRONMENT_URL=$(node-jq -r '.deploy_url' deploy-output.json)
                     npx playwright test --reporter=html # Lance les tests E2E + génère un rapport HTML
                 '''
             }
