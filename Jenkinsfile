@@ -15,15 +15,15 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh '''
-                    echo "🛠️ Building custom Playwright + Netlify image…"
+                    echo "🛠️ Building custom Playwright + Netlify image..."
                     docker build -t my-playwright .
                 '''
             }
         }
 
-        /***********************
+        /*************************
          * 2) BUILD REACT APP
-         ***********************/
+         *************************/
         stage('Build') {
             agent {
                 docker {
@@ -41,9 +41,9 @@ pipeline {
             }
         }
 
-        /***********************
+        /*************************
          * 3) TESTS (PARALLEL)
-         ***********************/
+         *************************/
         stage('Tests') {
             parallel {
 
@@ -80,7 +80,7 @@ pipeline {
                     steps {
                         sh '''
                             echo "🌐 Serving build locally"
-                            serve -s build & 
+                            serve -s build &
                             sleep 10
 
                             echo "🧪 Running Playwright E2E tests"
@@ -90,6 +90,9 @@ pipeline {
                     post {
                         always {
                             publishHTML([
+                                allowMissing: false,
+                                alwaysLinkToLastBuild: false,
+                                keepAll: true,
                                 reportDir: 'playwright-report',
                                 reportFiles: 'index.html',
                                 reportName: 'Playwright Local'
@@ -121,7 +124,7 @@ pipeline {
 
                     netlify deploy --dir=build --json > deploy-output.json
 
-                    CI_ENVIRONMENT_URL=$(jq -r '.deploy_url' deploy-output.json)
+                    export CI_ENVIRONMENT_URL=$(jq -r '.deploy_url' deploy-output.json)
                     echo "Staging URL: $CI_ENVIRONMENT_URL"
 
                     echo "🧪 Running Playwright E2E tests on staging"
@@ -131,6 +134,9 @@ pipeline {
             post {
                 always {
                     publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: false,
+                        keepAll: true,
                         reportDir: 'playwright-report',
                         reportFiles: 'index.html',
                         reportName: 'Staging E2E'
@@ -168,6 +174,9 @@ pipeline {
             post {
                 always {
                     publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: false,
+                        keepAll: true,
                         reportDir: 'playwright-report',
                         reportFiles: 'index.html',
                         reportName: 'Prod E2E'
