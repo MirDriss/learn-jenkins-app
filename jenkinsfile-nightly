@@ -1,0 +1,12 @@
+pipeline {
+    agent any              // On peut exécuter la pipeline sur n'importe quel agent Jenkins
+    
+    stages {
+
+        stage ('Build Docker Images'){
+            steps{
+                sh 'docker build -t my-playwright .'
+            }
+        }
+    }
+}
