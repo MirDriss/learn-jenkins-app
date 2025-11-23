@@ -124,7 +124,7 @@ pipeline {
 
                     netlify deploy --dir=build --json > deploy-output.json
 
-                    export CI_ENVIRONMENT_URL=$(jq -r '.deploy_url' deploy-output.json)
+                    export CI_ENVIRONMENT_URL=$(node-jq -r '.deploy_url' deploy-output.json)
                     echo "Staging URL: $CI_ENVIRONMENT_URL"
 
                     echo "🧪 Running Playwright E2E tests on staging"
