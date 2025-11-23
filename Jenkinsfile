@@ -1,112 +1,98 @@
 pipeline {
-    agent any              // On peut exécuter la pipeline sur n'importe quel agent Jenkins
+    agent any
 
     environment {
-        // Variables d'environnement utilisées pour le déploiement Netlify
         NETLIFY_SITE_ID = 'd6c1d36c-fd95-47e7-ab99-f35251321738'
-        
-        // Récupère le token Netlify depuis les credentials Jenkins
         NETLIFY_AUTH_TOKEN = credentials('netlify_token')
-
         REACT_APP_VERSION = "1.0.$BUILD_ID"
-
     }
-    
+
     stages {
 
-        /*****************************
-         *         STAGE 1 : BUILD
-         *****************************/
-        stage('Build') {
-
-            agent {
-                docker {
-                    image 'node:18-alpine'    // Utilisation d’un container Docker Node 18
-                    reuseNode true            // Réutilise le workspace du node Jenkins
-                }
-            }
-
+        /*************************
+         * 1) BUILD DOCKER IMAGE
+         *************************/
+        stage('Build Docker Image') {
             steps {
                 sh '''
-                    echo "Small change"
-                    ls -la                     # Liste les fichiers (juste pour debug)
-                    node --version            # Vérifie version Node
-                    npm --version             # Vérifie version npm
-                    
-                    npm ci                    # Installe les dépendances propres --> package-lock.json
-                    npm run build             # Compile ton projet → crée le dossier build/
-                    
-                    ls -la                    # Revérifie les fichiers après build
+                    echo "🛠️ Building custom Playwright + Netlify image…"
+                    docker build -t my-playwright .
                 '''
             }
         }
 
-        /*****************************
-         *         STAGE 2 : TESTS
-         *****************************/
-        stage ('Tests') {
+        /***********************
+         * 2) BUILD REACT APP
+         ***********************/
+        stage('Build') {
+            agent {
+                docker {
+                    image 'node:18-alpine'
+                    reuseNode true
+                }
+            }
+            steps {
+                sh '''
+                    echo "📦 Building React application"
+                    npm ci
+                    npm run build
+                    echo "✔ Build done"
+                '''
+            }
+        }
 
-            parallel {   // Exécute les tests en parallèle → gain de temps !
+        /***********************
+         * 3) TESTS (PARALLEL)
+         ***********************/
+        stage('Tests') {
+            parallel {
 
-                /************* Tests Unitaires (Jest) *************/
-                stage ('Unit test') {
-
+                /********** Unit tests **********/
+                stage('Unit Tests') {
                     agent {
                         docker {
                             image 'node:18-alpine'
                             reuseNode true
                         }
                     }
-
                     steps {
                         sh '''
-                            echo "Bien arrivé"
-                            
-                            test -f "build/index.html"   # Vérifie que le build existe
-                            
-                            npm test                     # Lance les tests unitaires Jest
+                            echo "🧪 Running Jest tests"
+                            test -f "build/index.html"
+                            npm test
                         '''
                     }
-
                     post {
                         always {
-                            junit 'jest-results/junit.xml'  //Publie les résultats Jest dans Jenkins
+                            junit 'jest-results/junit.xml'
                         }
                     }
                 }
 
-                /************* Tests End-to-End (Playwright) *************/
-                stage ('E2E') {
-
+                /********** E2E tests local **********/
+                stage('E2E Local') {
                     agent {
                         docker {
                             image 'my-playwright'
                             reuseNode true
                         }
                     }
-
                     steps {
-                        sh '''                         
-                            serve -s build &  # Lance ton site en background
-                            sleep 10                             # Attend que le site démarre
-                            
-                            npx playwright test --reporter=html # Lance les tests E2E + génère un rapport HTML
+                        sh '''
+                            echo "🌐 Serving build locally"
+                            serve -s build & 
+                            sleep 10
+
+                            echo "🧪 Running Playwright E2E tests"
+                            npx playwright test --reporter=html
                         '''
                     }
-
                     post {
                         always {
-                            // Publie le rapport HTML Playwright dans Jenkins
                             publishHTML([
-                                allowMissing: false,
-                                alwaysLinkToLastBuild: false,
-                                icon: '',
-                                keepAll: false,
                                 reportDir: 'playwright-report',
                                 reportFiles: 'index.html',
-                                reportName: 'Playwright Local',
-                                reportTitles: '',
-                                useWrapperFileDirectly: true
+                                reportName: 'Playwright Local'
                             ])
                         }
                     }
@@ -114,94 +100,77 @@ pipeline {
             }
         }
 
-        stage ('Deploying staging') {
-
+        /*************************
+         * 4) DEPLOY STAGING
+         *************************/
+        stage('Deploy Staging') {
             agent {
                 docker {
                     image 'my-playwright'
                     reuseNode true
                 }
             }
-
             environment {
                 CI_ENVIRONMENT_URL = 'Coming'
             }
             steps {
                 sh '''
-                    netlify --version # Vérifie version
-                    
-                    netlify status     # Vérifie connexion au compte Netlify
-                    
-                    # Déploie le dossier build dans Netlify en mode stagging
+                    echo "🚀 Deploying to STAGING"
+                    netlify --version
+                    netlify status
+
                     netlify deploy --dir=build --json > deploy-output.json
+
                     CI_ENVIRONMENT_URL=$(jq -r '.deploy_url' deploy-output.json)
-                    npx playwright test --reporter=html # Lance les tests E2E + génère un rapport HTML
+                    echo "Staging URL: $CI_ENVIRONMENT_URL"
+
+                    echo "🧪 Running Playwright E2E tests on staging"
+                    npx playwright test --reporter=html
                 '''
             }
-
             post {
                 always {
-                    // Publie le rapport HTML Playwright dans Jenkins
                     publishHTML([
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: false,
-                        icon: '',
-                        keepAll: false,
                         reportDir: 'playwright-report',
                         reportFiles: 'index.html',
-                        reportName: 'Stagging E2E',
-                        reportTitles: '',
-                        useWrapperFileDirectly: true
+                        reportName: 'Staging E2E'
                     ])
                 }
             }
         }
 
-        /*****************************
-         *         STAGE 3 : DEPLOY
-         *****************************/
-
-        stage ('Deploying Prod') {
-
+        /*************************
+         * 5) DEPLOY PROD
+         *************************/
+        stage('Deploy Prod') {
             agent {
                 docker {
                     image 'my-playwright'
                     reuseNode true
                 }
             }
-
             environment {
-                CI_ENVIRONMENT_URL= "https://golden-parfait-316a2f.netlify.app"
+                CI_ENVIRONMENT_URL = "https://golden-parfait-316a2f.netlify.app"
             }
-
             steps {
                 sh '''
-                    netlify --version # Vérifie version
-                    
-                    echo "Deploying to production. SITE_ID = $NETLIFY_SITE_ID"
-                    
-                    netlify status     # Vérifie connexion au compte Netlify
-                    
-                    # Déploie le dossier build dans Netlify en mode production
-                    netlify deploy --dir=build --prod
-                    npx playwright test --reporter=html # Lance les tests E2E + génère un rapport HTML
+                    echo "🚀 Deploying to PRODUCTION"
+                    netlify --version
+                    netlify status
 
+                    netlify deploy --dir=build --prod
+                    echo "Prod URL: $CI_ENVIRONMENT_URL"
+
+                    echo "🧪 Running Playwright E2E tests on production"
+                    npx playwright test --reporter=html
                 '''
             }
-
             post {
                 always {
-                    // Publie le rapport HTML Playwright dans Jenkins
                     publishHTML([
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: false,
-                        icon: '',
-                        keepAll: false,
                         reportDir: 'playwright-report',
                         reportFiles: 'index.html',
-                        reportName: 'Prod E2E',
-                        reportTitles: '',
-                        useWrapperFileDirectly: true
+                        reportName: 'Prod E2E'
                     ])
                 }
             }
